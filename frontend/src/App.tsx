@@ -17,7 +17,6 @@ import StrengthenArgument from './Pages/StrengthenArgument';
 import SpeechTest from './Pages/SpeechTest';
 // Layout
 import Layout from './components/Layout';
-import SupportOpenSource from './Pages/SupportOpenSource';
 import CoachPage from './Pages/CoachPage';
 import ChatRoom from './components/ChatRoom';
 import TournamentHub from './Pages/TournamentHub';
@@ -89,12 +88,6 @@ function AppRoutes() {
             path='coach/strengthen-argument'
             element={<StrengthenArgument />}
           />
-          <Route path='/coach' element={<CoachPage />} />
-          <Route
-            path='coach/strengthen-argument'
-            element={<StrengthenArgument />}
-          />{' '}
-          {/* Add this route */}
           <Route path='coach/pros-cons' element={<ProsConsChallenge />} />
           <Route path='support-os' element={<SupportOpenSource />} />
         </Route>
