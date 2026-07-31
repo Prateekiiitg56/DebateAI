@@ -53,13 +53,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyToken = useCallback(async () => {
-    setLoading(true);
-
     const storedToken = localStorage.getItem('token');
-    if (!storedToken) {
-      setLoading(false)
-      return
-    } ;
+    if (!storedToken) return;
     try {
       const response = await fetch(`${baseURL}/verifyToken`, {
         method: 'POST',
@@ -72,7 +67,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setToken(null);
         setUser(null);
         navigate('/login');
-        setLoading(false);
         return;
       }
       setToken(storedToken);
@@ -114,9 +108,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.log('error', error);
       logout();
-    }
-    finally {
-      setLoading(false);
     }
   }, [setUser]);
 

@@ -49,7 +49,7 @@ function AppRoutes() {
   if (!authContext) {
     throw new Error('AppRoutes must be used within an AuthProvider');
   }
-  const { isAuthenticated, loading } = authContext;
+  const { isAuthenticated } = authContext;
   return (
     <Routes>
       {/* Public routes */}
@@ -60,12 +60,7 @@ function AppRoutes() {
         }
       />
       <Route path='/auth'
-        element={
-          loading ? (
-            <div>Loading...</div>
-          ) : isAuthenticated ?
-            (<Navigate to='/startDebate' replace />)
-            : (<Authentication />)}
+        element={ isAuthenticated ? <Navigate to='/startDebate' replace/> : <Authentication/> }
       />
       <Route path='/admin/login' element={<AdminSignup />} />
       <Route path='/admin/dashboard' element={<AdminDashboard />} />
