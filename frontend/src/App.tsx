@@ -59,7 +59,9 @@ function AppRoutes() {
           isAuthenticated ? <Navigate to='/startDebate' replace /> : <Home />
         }
       />
-      <Route path='/auth' element={<Authentication />} />
+      <Route path='/auth'
+        element={ isAuthenticated ? <Navigate to='/startDebate' replace/> : <Authentication/> }
+      />
       <Route path='/admin/login' element={<AdminSignup />} />
       <Route path='/admin/dashboard' element={<AdminDashboard />} />
       {/* Public routes with layout */}
