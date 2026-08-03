@@ -128,10 +128,10 @@ const JudgmentPopup: React.FC<JudgmentPopupProps> = ({
 
   const localAvatar =
     localStorage.getItem('userAvatar') ||
-    'https://avatar.iran.liara.run/public/40';
+    'https://api.dicebear.com/9.x/big-ears/svg?seed=Felix';
   const opponentAvatar =
     localStorage.getItem('opponentAvatar') ||
-    'https://avatar.iran.liara.run/public/31';
+    'https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan';
 
 const isUserBotFormat = 'user' in judgment.opening_statement;
 

@@ -301,7 +301,7 @@ func WebsocketHandler(c *gin.Context) {
 	room.Mutex.Unlock()
 
 	if avatarURL == "" {
-		avatarURL = "https://avatar.iran.liara.run/public/31"
+		avatarURL = "https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan"
 	}
 	if rating == 0 {
 		rating = 1500

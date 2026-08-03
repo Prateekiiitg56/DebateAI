@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSetAtom } from 'jotai';
 import { userAtom } from '@/state/userAtom';
 import type { User } from '@/types/user';
+import { DEFAULT_AVATAR_URL } from '@/constants/avatar';
 
 const baseURL = import.meta.env.VITE_BASE_URL;
 const USER_CACHE_KEY = 'userProfile';
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           lastRatingUpdate:
             userData.lastRatingUpdate || new Date().toISOString(),
           avatarUrl:
-            userData.avatarUrl || 'https://avatar.iran.liara.run/public/10',
+            userData.avatarUrl || DEFAULT_AVATAR_URL,
           twitter: userData.twitter,
           instagram: userData.instagram,
           linkedin: userData.linkedin,
@@ -141,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastRatingUpdate:
           data.user?.lastRatingUpdate || new Date().toISOString(),
         avatarUrl:
-          data.user?.avatarUrl || 'https://avatar.iran.liara.run/public/10',
+          data.user?.avatarUrl || DEFAULT_AVATAR_URL,
         twitter: data.user?.twitter || undefined,
         instagram: data.user?.instagram || undefined,
         linkedin: data.user?.linkedin || undefined,
@@ -214,7 +215,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           rd: data.user?.rd || 350,
           volatility: data.user?.volatility || 0.06,
           lastRatingUpdate: data.user?.lastRatingUpdate || new Date().toISOString(),
-          avatarUrl: data.user?.avatarUrl || 'https://avatar.iran.liara.run/public/10',
+          avatarUrl: data.user?.avatarUrl || DEFAULT_AVATAR_URL,
           twitter: data.user?.twitter || undefined,
           instagram: data.user?.instagram || undefined,
           linkedin: data.user?.linkedin || undefined,
@@ -307,7 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastRatingUpdate:
           data.user?.lastRatingUpdate || new Date().toISOString(),
         avatarUrl:
-          data.user?.avatarUrl || 'https://avatar.iran.liara.run/public/10',
+          data.user?.avatarUrl || DEFAULT_AVATAR_URL,
         twitter: data.user?.twitter || undefined,
         instagram: data.user?.instagram || undefined,
         linkedin: data.user?.linkedin || undefined,
