@@ -978,7 +978,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                 avatarUrl:
                   currentUser.avatarUrl ||
                   localParticipant.avatarUrl ||
-                  "https://avatar.iran.liara.run/public/40",
+                  "https://api.dicebear.com/9.x/big-ears/svg?seed=Felix",
                 displayName:
                   currentUser.displayName ||
                   localParticipant.displayName ||
@@ -996,7 +996,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                 elo: currentUser.rating || 1500,
                 avatarUrl:
                   currentUser.avatarUrl ||
-                  "https://avatar.iran.liara.run/public/40",
+                  "https://api.dicebear.com/9.x/big-ears/svg?seed=Felix",
                 email: currentUser.email || "",
               };
               setLocalUser(fallbackLocal);
@@ -1008,7 +1008,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                 ...opponentParticipant,
                 avatarUrl:
                   opponentParticipant.avatarUrl ||
-                  "https://avatar.iran.liara.run/public/31",
+                  "https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan",
               };
               setOpponentUser(opponentData);
               localStorage.setItem(
@@ -1064,7 +1064,7 @@ const OnlineDebateRoom = (): JSX.Element => {
               elo: currentUser.rating || 1500,
               avatarUrl:
                 currentUser.avatarUrl ||
-                "https://avatar.iran.liara.run/public/40",
+                "https://api.dicebear.com/9.x/big-ears/svg?seed=Felix",
               displayName: currentUser.displayName || "You",
             };
             setLocalUser(fallbackLocalUser);
@@ -1252,7 +1252,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                   ...opponentParticipant,
                   avatarUrl:
                     opponentParticipant.avatarUrl ||
-                    "https://avatar.iran.liara.run/public/31",
+                    "https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan",
                 });
               } else {
                 setOpponentUser(null);
@@ -2183,7 +2183,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                         src={
                           localUser?.avatarUrl ||
                           currentUser?.avatarUrl ||
-                          "https://avatar.iran.liara.run/public/40"
+                          "https://api.dicebear.com/9.x/big-ears/svg?seed=Felix"
                         }
                         alt="You"
                         className="w-20 h-20 rounded-full object-cover"
@@ -2243,7 +2243,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                       <img
                         src={
                           opponentUser?.avatarUrl ||
-                          "https://avatar.iran.liara.run/public/31"
+                          "https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan"
                         }
                         alt="Opponent"
                         className="w-20 h-20 rounded-full object-cover"
@@ -2387,7 +2387,7 @@ const OnlineDebateRoom = (): JSX.Element => {
                 src={
                   localUser?.avatarUrl ||
                   currentUser?.avatarUrl ||
-                  "https://avatar.iran.liara.run/public/40"
+                  "https://api.dicebear.com/9.x/big-ears/svg?seed=Felix"
                 }
                 alt="You"
                 className="w-full h-full rounded-full border border-orange-400 object-cover"
@@ -2451,7 +2451,7 @@ const OnlineDebateRoom = (): JSX.Element => {
               <img
                 src={
                   opponentUser?.avatarUrl ||
-                  "https://avatar.iran.liara.run/public/31"
+                  "https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan"
                 }
                 alt="Opponent"
                 className="w-full h-full rounded-full border border-orange-400 object-cover"
