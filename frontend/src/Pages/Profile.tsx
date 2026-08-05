@@ -54,6 +54,7 @@ import {
 import { FaTrophy, FaMedal, FaAward } from "react-icons/fa";
 import { format, isSameDay, subDays } from "date-fns";
 import defaultAvatar from "@/assets/avatar2.jpg";
+import { DEFAULT_AVATAR_URL } from "@/constants/avatar";
 import {
   PieChart,
   Pie,
@@ -82,6 +83,20 @@ import {
   transcriptService,
   SavedDebateTranscript,
 } from "@/services/transcriptService";
+
+const handleProfileAvatarLoadError = (
+  event: React.SyntheticEvent<HTMLImageElement>
+) => {
+  const image = event.currentTarget;
+
+  if (image.src !== DEFAULT_AVATAR_URL) {
+    image.src = DEFAULT_AVATAR_URL;
+    return;
+  }
+
+  image.onerror = null;
+  image.src = defaultAvatar;
+};
 
 interface ProfileData {
   displayName: string;
@@ -770,8 +785,9 @@ const Profile: React.FC = () => {
         <div className="flex flex-col items-center mb-4">
           <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-muted flex-shrink-0 mb-2 border-2 border-primary shadow-md group">
             <img
-              src={profile.avatarUrl || defaultAvatar}
+              src={profile.avatarUrl || DEFAULT_AVATAR_URL}
               alt="Avatar"
+              onError={handleProfileAvatarLoadError}
               className="object-cover w-full h-full"
             />
             <button

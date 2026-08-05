@@ -7,6 +7,7 @@ import JudgmentPopup from "@/components/JudgementPopup";
 import { Mic, MicOff } from "lucide-react";
 import { useAtom } from "jotai";
 import { userAtom } from "@/state/userAtom";
+import { DEFAULT_AVATAR_URL } from "@/constants/avatar";
 
 // Bot type definition (same as in BotSelection)
 interface Bot {
@@ -257,7 +258,7 @@ const DebateRoom: React.FC = () => {
 
   const bot = allBots.find((b) => b.name === debateData.botName) || allBots[0];
   const userAvatar =
-    user?.avatarUrl || "https://avatar.iran.liara.run/public/10";
+    user?.avatarUrl || DEFAULT_AVATAR_URL;
 
   const handleConcede = async () => {
     if (window.confirm("Are you sure you want to concede? This will count as a loss.")) {
