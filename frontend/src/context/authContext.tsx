@@ -79,7 +79,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (userResponse.ok) {
-        const userData = await userResponse.json();
+        const responseData = await userResponse.json();
+        const userData = responseData.profile;
         const normalizedUser: User = {
           id: userData.id || userData._id,
           email: userData.email,
