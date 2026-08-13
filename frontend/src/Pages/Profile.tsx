@@ -53,6 +53,7 @@ import {
 import { FaTrophy, FaMedal, FaAward } from "react-icons/fa";
 import { format, isSameDay, subDays } from "date-fns";
 import defaultAvatar from "@/assets/avatar2.jpg";
+import { DEFAULT_AVATAR_URL } from "@/constants/avatar";
 import {
   PieChart,
   Pie,
@@ -85,6 +86,20 @@ import {
   transcriptService,
   SavedDebateTranscript,
 } from "@/services/transcriptService";
+
+const handleProfileAvatarLoadError = (
+  event: React.SyntheticEvent<HTMLImageElement>
+) => {
+  const image = event.currentTarget;
+
+  if (image.src !== DEFAULT_AVATAR_URL) {
+    image.src = DEFAULT_AVATAR_URL;
+    return;
+  }
+
+  image.onerror = null;
+  image.src = defaultAvatar;
+};
 
 interface ProfileData {
   displayName: string;
@@ -664,8 +679,8 @@ const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   };
 
   return (
-    <div className="w-full h-full flex flex-col md:flex-row gap-4 p-2 sm:p-4 bg-background min-h-[calc(100vh-4rem)]">
-      <div className="w-full md:w-1/4 lg:w-1/5 bg-card p-4 border border-border rounded-md shadow max-h-[calc(100vh-4rem)] overflow-y-auto">
+    <div className="w-full flex flex-col lg:flex-row gap-4 p-2 sm:p-4 bg-background">
+      <div className="w-full lg:w-1/3 bg-card p-4 sm:p-6 border border-border rounded-md shadow lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
         {successMessage && (
           <div className="mb-2 p-2 rounded bg-green-100 text-green-700 text-xs animate-in fade-in duration-300">
             {successMessage}
@@ -969,7 +984,7 @@ const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="shadow h-[250px] sm:h-[300px] flex flex-col">
+          <Card className="shadow min-h-[250px] sm:min-h-[300px] flex flex-col">
             <CardHeader className="p-2 flex-shrink-0">
               <CardTitle className="text-foreground text-base sm:text-lg">Top 5 Debaters</CardTitle>
               <CardDescription className="text-muted-foreground text-xs">See who's leading</CardDescription>
@@ -1054,7 +1069,7 @@ const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
       </div>
 
       <Dialog open={isDebateDialogOpen} onOpenChange={setIsDebateDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Award className="w-5 h-5" />
@@ -1131,7 +1146,7 @@ const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
                   <Separator />
                   <div>
                     <h4 className="font-semibold mb-3">Full Conversation</h4>
-                    <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-3">
+                    <div className="border rounded-lg p-3 space-y-3">
                       {fullTranscript.messages.map((message, index: number) => (
                         <div key={index} className={`flex gap-3 ${message.sender === "User" ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[80%] rounded-lg p-3 ${message.sender === "User" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>

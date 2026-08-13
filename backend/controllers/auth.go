@@ -180,7 +180,7 @@ func SignUp(ctx *gin.Context) {
 		RD:               350.0,
 		Volatility:       0.06,
 		LastRatingUpdate: now,
-		AvatarURL:        "https://avatar.iran.liara.run/public/10",
+		AvatarURL:        "https://api.dicebear.com/9.x/big-ears/svg?seed=Jude",
 		Password:         string(hashedPassword),
 		IsVerified:       false,
 		VerificationCode: verificationCode,
