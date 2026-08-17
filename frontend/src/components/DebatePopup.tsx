@@ -16,42 +16,42 @@ const DebatePopup: React.FC<DebatePopupProps> = ({ onClose }) => {
   );
 
   // Handler to join a debate room by sending the room code via navigation.
-const handleJoinRoom = async () => {
-  const trimmedRoomCode = roomCode.trim();
-  if (!trimmedRoomCode) return;
+  const handleJoinRoom = async () => {
+    const trimmedRoomCode = roomCode.trim();
+    if (!trimmedRoomCode) return;
 
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Please sign in again.");
-    return;
-  }
-
-  const baseURL =
-    import.meta.env.VITE_BASE_URL || "http://localhost:1313";
-
-  try {
-    const response = await fetch(
-      `${baseURL}/rooms/${encodeURIComponent(trimmedRoomCode)}/join`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      alert(data?.error || "Unable to join this room.");
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please sign in again.');
       return;
     }
 
-    navigate(`/debate-room/${trimmedRoomCode}`);
-    onClose();
-  } catch {
-    alert("Unable to connect to the server.");
-  }
-};
+    const baseURL =
+      import.meta.env.VITE_BASE_URL || 'http://localhost:1313';
+
+    try {
+      const response = await fetch(
+        `${baseURL}/rooms/${encodeURIComponent(trimmedRoomCode)}/join`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        alert(data?.error || 'Unable to join this room.');
+        return;
+      }
+
+      navigate(`/debate-room/${trimmedRoomCode}`);
+      onClose();
+    } catch {
+      alert('Unable to connect to the server.');
+    }
+  };
 
   // Handler to create a new room by sending a POST request to the backend.
   const handleCreateRoom = async () => {
@@ -75,7 +75,7 @@ const handleJoinRoom = async () => {
       const room = await response.json();
       navigate(`/debate-room/${room.id}`);
       onClose();
-    } catch (error) {
+    } catch {
       alert('Error creating room.');
     }
   };

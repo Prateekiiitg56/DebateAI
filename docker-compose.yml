@@ -9,11 +9,16 @@ services:
       - ./backend:/app
     environment:
       - PORT=1313
+      - DATABASE_URI=mongodb://mongo:27017/debateai
       - CONFIG_PATH=./config/config.prod.yml
+      - REDIS_ADDR=redis:6379
     env_file:
       - ./backend/.env
     depends_on:
-      - mongo
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
