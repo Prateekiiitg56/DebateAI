@@ -78,6 +78,8 @@ interface UserDetails {
   avatarUrl?: string;
   displayName?: string;
   email?: string;
+  role?: DebateRole;
+  ready?: boolean;
 }
 
 // Define WebSocket message structure
@@ -140,7 +142,7 @@ const BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
 
 const WS_BASE_URL = BASE_URL.replace(
   /^https?/,
-  (match) => (match === "https" ? "wss" : "ws")
+  (match: string) => (match === "https" ? "wss" : "ws")
 );
 
 
@@ -167,6 +169,7 @@ const OnlineDebateRoom = (): JSX.Element => {
   const [opponentUser, setOpponentUser] = useState<UserDetails | null>(null);
   const [roomParticipants, setRoomParticipants] = useState<UserDetails[]>([]);
   const [roomOwnerId, setRoomOwnerId] = useState<string | null>(null);
+  const [isWsConnected, setIsWsConnected] = useState(false);
 
   const isRoomOwner = Boolean(roomOwnerId && currentUserId === roomOwnerId);
 
@@ -183,7 +186,13 @@ const OnlineDebateRoom = (): JSX.Element => {
   const spectatorBaseIdRef = useRef<Map<string, Set<string>>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const localRoleRef = useRef<DebateRole | null>(null);
+  const peerRoleRef = useRef<DebateRole | null>(null);
+  const debatePhaseRef = useRef<DebatePhase>(DebatePhase.Setup);
   const currentUserIdRef = useRef<string | null>(currentUserId);
+  const currentUserRef = useRef(currentUser);
+  const fetchRoomParticipantsRef = useRef<
+    ((retryCount?: number, background?: boolean) => Promise<void>) | null
+  >(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -294,8 +303,17 @@ const OnlineDebateRoom = (): JSX.Element => {
   }, [localRole]);
 
   useEffect(() => {
+    peerRoleRef.current = peerRole;
+  }, [peerRole]);
+
+  useEffect(() => {
+    debatePhaseRef.current = debatePhase;
+  }, [debatePhase]);
+
+  useEffect(() => {
     currentUserIdRef.current = currentUserId;
-  }, [currentUserId]);
+    currentUserRef.current = currentUser;
+  }, [currentUser, currentUserId]);
 
   const startSpectatorOffer = useCallback(
     async (baseConnectionId: string, requestId?: string) => {
@@ -376,7 +394,7 @@ const OnlineDebateRoom = (): JSX.Element => {
             role,
           })
         );
-      } catch (error) {
+      } catch {
         cleanupSpectatorConnection(connectionId);
       }
     },
@@ -920,10 +938,12 @@ const OnlineDebateRoom = (): JSX.Element => {
 
   // Function to fetch room participants
   const fetchRoomParticipants = useCallback(
-    async (retryCount = 0) => {
+    async (retryCount = 0, background = false) => {
       if (!roomId) return;
 
-      setIsLoading(true);
+      if (!background) {
+        setIsLoading(true);
+      }
       try {
         const token = getAuthToken();
         const response = await fetch(
@@ -1051,7 +1071,7 @@ const OnlineDebateRoom = (): JSX.Element => {
             }
 
             setTimeout(() => {
-              fetchRoomParticipants(retryCount + 1);
+              fetchRoomParticipants(retryCount + 1, background);
             }, 2000);
             return;
           }
@@ -1090,7 +1110,9 @@ const OnlineDebateRoom = (): JSX.Element => {
           setRoomOwnerId((prev) => prev ?? currentUser.id ?? null);
         }
       } finally {
-        setIsLoading(false);
+        if (!background) {
+          setIsLoading(false);
+        }
       }
     },
     [
@@ -1105,13 +1127,31 @@ const OnlineDebateRoom = (): JSX.Element => {
     ]
   );
 
+  useEffect(() => {
+    fetchRoomParticipantsRef.current = fetchRoomParticipants;
+  }, [fetchRoomParticipants]);
+
+  // A room join is persisted through HTTP, while the live notification is sent
+  // through WebSocket. Poll only while waiting so a missed socket event heals.
+  useEffect(() => {
+    if (!roomId || roomParticipants.length >= 2) return;
+
+    void fetchRoomParticipants(0, true);
+    const participantPoll = window.setInterval(() => {
+      void fetchRoomParticipants(0, true);
+    }, 3000);
+
+    return () => window.clearInterval(participantPoll);
+  }, [fetchRoomParticipants, roomId, roomParticipants.length]);
+
   // Initialize WebSocket, RTCPeerConnection, and media
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = getAuthToken();
     if (!token || !roomId) return;
 
-   const wsUrl = `${WS_BASE_URL}/ws?room=${roomId}&token=${token}`;
+    let participantFetchTimeout: number | undefined;
+
+    const wsUrl = `${WS_BASE_URL}/ws?room=${roomId}&token=${token}`;
 
     const rws = new ReconnectingWebSocket(wsUrl, [], {
       connectionTimeout: 4000,
@@ -1123,13 +1163,22 @@ const OnlineDebateRoom = (): JSX.Element => {
     wsRef.current = rws;
 
     rws.onopen = () => {
+      setIsWsConnected(true);
       rws.send(JSON.stringify({ type: "join", room: roomId }));
       // Wait a bit before fetching participants to ensure room is fully created
-      setTimeout(() => {
-        fetchRoomParticipants();
+      participantFetchTimeout = window.setTimeout(() => {
+        void fetchRoomParticipantsRef.current?.();
       }, 1000);
       getMedia();
       flushSpectatorOfferQueue();
+    };
+
+    rws.onclose = () => {
+      setIsWsConnected(false);
+    };
+
+    rws.onerror = () => {
+      setIsWsConnected(false);
     };
 
     rws.onmessage = async (event) => {
@@ -1147,27 +1196,28 @@ const OnlineDebateRoom = (): JSX.Element => {
         case "phaseChange":
           if (data.phase) {
             console.debug(
-              `Received phase change to ${data.phase}. Local role: ${localRole}`
+              `Received phase change to ${data.phase}. Local role: ${localRoleRef.current}`
             );
             setDebatePhase(data.phase);
           }
           break;
         case "message":
-          if (data.message && peerRole) {
+          if (data.message && peerRoleRef.current) {
             // Store in speech transcripts for the current phase
             setSpeechTranscripts((prev) => ({
               ...prev,
-              [debatePhase]: (prev[debatePhase] || "") + " " + data.message,
+              [debatePhaseRef.current]:
+                (prev[debatePhaseRef.current] || "") + " " + data.message,
             }));
           }
           break;
         case "autoMuteStatus":
-          if (data.userId === currentUser?.id) {
+          if (data.userId === currentUserIdRef.current) {
             setIsAutoMuted(data.isMuted || false);
 
             // Automatically mute/unmute microphone based on turn
-            if (localStream) {
-              const audioTrack = localStream.getAudioTracks()[0];
+            if (localStreamRef.current) {
+              const audioTrack = localStreamRef.current.getAudioTracks()[0];
               if (audioTrack) {
                 audioTrack.enabled = !data.isMuted;
               }
@@ -1177,7 +1227,7 @@ const OnlineDebateRoom = (): JSX.Element => {
         case "speechText":
           if (data.userId && data.speechText) {
             // Store speech text in transcripts for the specified phase
-            const targetPhase = data.phase || debatePhase;
+            const targetPhase = data.phase || debatePhaseRef.current;
             setSpeechTranscripts((prev) => {
               const updated = {
                 ...prev,
@@ -1192,7 +1242,7 @@ const OnlineDebateRoom = (): JSX.Element => {
           if (
             data.userId &&
             data.liveTranscript &&
-            data.userId !== currentUser?.id
+            data.userId !== currentUserIdRef.current
           ) {
             // Only update if it's from the opponent
             setCurrentTranscript(data.liveTranscript);
@@ -1200,7 +1250,12 @@ const OnlineDebateRoom = (): JSX.Element => {
           break;
         case "userDetails":
           if (data.userDetails) {
-            if (data.userDetails.id === currentUser?.id) {
+            const activeUser = currentUserRef.current;
+            if (
+              data.userDetails.id === activeUser?.id ||
+              (data.userDetails.email &&
+                data.userDetails.email === activeUser?.email)
+            ) {
               setLocalUser(data.userDetails);
             } else {
               setOpponentUser(data.userDetails);
@@ -1215,35 +1270,42 @@ const OnlineDebateRoom = (): JSX.Element => {
             );
             setRoomParticipants(data.roomParticipants);
             // Update local and opponent user details when participants change
-            if (currentUser && data.roomParticipants.length >= 1) {
+            const activeUser = currentUserRef.current;
+            if (activeUser && data.roomParticipants.length >= 1) {
               const localParticipant = data.roomParticipants.find(
                 (p: UserDetails) =>
-                  p.id === currentUser.id || p.email === currentUser.email
+                  p.id === activeUser.id || p.email === activeUser.email
               );
               const opponentParticipant = data.roomParticipants.find(
                 (p: UserDetails) =>
-                  (p.id && p.id !== currentUser.id) ||
-                  (!p.id && p.email && p.email !== currentUser.email)
+                  (p.id && p.id !== activeUser.id) ||
+                  (!p.id && p.email && p.email !== activeUser.email)
               );
 
               if (localParticipant) {
                 setLocalUser({
                   ...localParticipant,
                   avatarUrl:
-                    currentUser.avatarUrl || localParticipant.avatarUrl,
+                    activeUser.avatarUrl || localParticipant.avatarUrl,
                   displayName:
-                    currentUser.displayName || localParticipant.displayName,
+                    activeUser.displayName || localParticipant.displayName,
                 });
+                if (localParticipant.ready !== undefined) {
+                  setLocalReady(localParticipant.ready);
+                }
+                if (localParticipant.role) {
+                  setLocalRole(localParticipant.role);
+                }
               } else {
                 // Fallback to current user data
                 setLocalUser({
-                  id: currentUser.id || "unknown",
+                  id: activeUser.id || "unknown",
                   username:
-                    currentUser.displayName || currentUser.email || "User",
+                    activeUser.displayName || activeUser.email || "User",
                   displayName:
-                    currentUser.displayName || currentUser.email || "User",
-                  elo: currentUser.rating || 1500,
-                  avatarUrl: currentUser.avatarUrl,
+                    activeUser.displayName || activeUser.email || "User",
+                  elo: activeUser.rating || 1500,
+                  avatarUrl: activeUser.avatarUrl,
                 });
               }
 
@@ -1254,8 +1316,16 @@ const OnlineDebateRoom = (): JSX.Element => {
                     opponentParticipant.avatarUrl ||
                     "https://api.dicebear.com/9.x/big-ears/svg?seed=Nolan",
                 });
+                if (opponentParticipant.ready !== undefined) {
+                  setPeerReady(opponentParticipant.ready);
+                }
+                if (opponentParticipant.role) {
+                  setPeerRole(opponentParticipant.role);
+                }
               } else {
                 setOpponentUser(null);
+                setPeerReady(false);
+                setPeerRole(null);
               }
             }
           }
@@ -1297,7 +1367,10 @@ const OnlineDebateRoom = (): JSX.Element => {
           }
           break;
         case "answer":
-          if (data.connectionId && data.targetUserId === currentUserId) {
+          if (
+            data.connectionId &&
+            data.targetUserId === currentUserIdRef.current
+          ) {
             const spectatorPc = data.connectionId
               ? spectatorPCsRef.current.get(data.connectionId)
               : null;
@@ -1311,7 +1384,9 @@ const OnlineDebateRoom = (): JSX.Element => {
                   for (const candidate of pending) {
                     try {
                       await spectatorPc.addIceCandidate(candidate);
-                    } catch (err) {}
+                    } catch {
+                      // Ignore candidates that became invalid during reconnect.
+                    }
                   }
                   spectatorPendingCandidatesRef.current.delete(
                     data.connectionId
@@ -1324,7 +1399,7 @@ const OnlineDebateRoom = (): JSX.Element => {
           } else if (
             data.connectionId &&
             data.targetUserId &&
-            data.targetUserId !== currentUserId
+            data.targetUserId !== currentUserIdRef.current
           ) {
             // Spectator answer meant for the other debater; ignore.
           } else if (pcRef.current && data.answer) {
@@ -1333,7 +1408,7 @@ const OnlineDebateRoom = (): JSX.Element => {
           break;
         case "candidate":
           if (data.connectionId) {
-            if (data.userId && data.userId !== currentUserId) {
+            if (data.userId && data.userId !== currentUserIdRef.current) {
               // Candidate is intended for the other debater's copy of this spectator connection.
               break;
             }
@@ -1356,10 +1431,9 @@ const OnlineDebateRoom = (): JSX.Element => {
                     queue
                   );
                 }
-              } catch (err) {
+              } catch {
                 cleanupSpectatorConnection(data.connectionId);
               }
-            } else if (!spectatorPc) {
             }
           } else if (pcRef.current && data.candidate) {
             await pcRef.current.addIceCandidate(data.candidate);
@@ -1403,6 +1477,9 @@ const OnlineDebateRoom = (): JSX.Element => {
     };
 
     return () => {
+      if (participantFetchTimeout !== undefined) {
+        window.clearTimeout(participantFetchTimeout);
+      }
       const activeLocalStream = localStreamRef.current;
       if (activeLocalStream) {
         activeLocalStream.getTracks().forEach((track) => track.stop());
@@ -1420,6 +1497,7 @@ const OnlineDebateRoom = (): JSX.Element => {
     };
   }, [
     cleanupSpectatorConnection,
+    cleanupSpectatorConnectionsByBase,
     flushSpectatorOfferQueue,
     processSpectatorOfferRequest,
     queueSpectatorOffer,
@@ -1999,11 +2077,17 @@ const OnlineDebateRoom = (): JSX.Element => {
   };
 
   const toggleReady = () => {
+    const socket = wsRef.current;
+    if (!isWsConnected || !socket || socket.readyState !== WebSocket.OPEN) {
+      window.alert(
+        "The room connection is still reconnecting. Please try again."
+      );
+      return;
+    }
+
     const newReadyState = !localReady;
+    socket.send(JSON.stringify({ type: "ready", ready: newReadyState }));
     setLocalReady(newReadyState);
-    wsRef.current?.send(
-      JSON.stringify({ type: "ready", ready: newReadyState })
-    );
   };
 
   // Manage setup popup visibility
@@ -2287,13 +2371,18 @@ const OnlineDebateRoom = (): JSX.Element => {
                 <div>
                   <Button
                     onClick={toggleReady}
+                    disabled={!isWsConnected}
                     className={`w-full py-2 rounded-lg transition ${
                       localReady
                         ? "bg-destructive text-destructive-foreground"
                         : "bg-accent text-accent-foreground"
                     }`}
                   >
-                    {localReady ? "Cancel Ready" : "I'm Ready"}
+                    {!isWsConnected
+                      ? "Connecting..."
+                      : localReady
+                      ? "Cancel Ready"
+                      : "I'm Ready"}
                   </Button>
                 </div>
               </>

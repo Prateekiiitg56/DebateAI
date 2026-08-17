@@ -9,7 +9,6 @@ services:
       - ./backend:/app
     environment:
       - PORT=1313
-      - DATABASE_URI=mongodb://mongo:27017/debateai
       - CONFIG_PATH=./config/config.prod.yml
     env_file:
       - ./backend/.env
@@ -37,5 +36,19 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   mongo_data:
+  redis_data:
