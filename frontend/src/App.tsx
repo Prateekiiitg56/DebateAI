@@ -67,7 +67,6 @@ function AppRoutes() {
       {/* Public routes with layout */}
       <Route element={<Layout />}>
         <Route path='about' element={<About />} />
-        <Route path='support-debateai' element={<SupportOpenSource />} />
       </Route>
 
       {/* Protected routes with layout */}
