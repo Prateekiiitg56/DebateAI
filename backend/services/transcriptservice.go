@@ -373,11 +373,8 @@ func lookupRoomTopic(ctx context.Context, roomID string) string {
 		return ""
 	}
 
-	var database = db.MongoDatabase
-	if database == nil {
-		database = db.MongoClient.Database("DebateAI")
-	}
-
+	database := db.MongoDatabase
+	
 	var room struct {
 		Topic        string `bson:"topic"`
 		CurrentTopic string `bson:"currentTopic"`
