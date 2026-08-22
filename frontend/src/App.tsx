@@ -28,6 +28,7 @@ import CommunityFeed from './Pages/CommunityFeed';
 import AdminSignup from './Pages/Admin/AdminSignup';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
 import ViewDebate from './Pages/ViewDebate';
+import SupportOpenSource from './Pages/SupportOpenSource';
 
 // Protects routes based on authentication status
 function ProtectedRoute() {
@@ -58,7 +59,9 @@ function AppRoutes() {
           isAuthenticated ? <Navigate to='/startDebate' replace /> : <Home />
         }
       />
-      <Route path='/auth' element={<Authentication />} />
+      <Route path='/auth'
+        element={ isAuthenticated ? <Navigate to='/startDebate' replace/> : <Authentication/> }
+      />
       <Route path='/admin/login' element={<AdminSignup />} />
       <Route path='/admin/dashboard' element={<AdminDashboard />} />
       {/* Public routes with layout */}
@@ -86,13 +89,8 @@ function AppRoutes() {
             path='coach/strengthen-argument'
             element={<StrengthenArgument />}
           />
-          <Route path='/coach' element={<CoachPage />} />
-          <Route
-            path='coach/strengthen-argument'
-            element={<StrengthenArgument />}
-          />{' '}
-          {/* Add this route */}
           <Route path='coach/pros-cons' element={<ProsConsChallenge />} />
+          <Route path='support-os' element={<SupportOpenSource />} />
         </Route>
         <Route path='/debate/:roomId' element={<DebateRoom />} />
         <Route path='/debate-room/:roomId' element={<OnlineDebateRoom />} />
