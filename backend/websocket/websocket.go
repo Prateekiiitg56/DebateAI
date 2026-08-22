@@ -50,6 +50,7 @@ type Client struct {
 	LastActivity time.Time
 	IsMuted      bool   // New field to track mute status
 	Role         string // New field to track debate role (for/against)
+	Ready        bool   // Whether the debater is ready to start
 	SpeechText   string // New field to store speech text
 	ConnectionID string
 }
@@ -173,6 +174,7 @@ func buildParticipantsMessage(room *Room) map[string]interface{} {
 			"displayName": client.Username,
 			"email":       client.Email,
 			"role":        client.Role,
+			"ready":       client.Ready,
 			"isMuted":     client.IsMuted,
 		})
 	}
@@ -666,13 +668,14 @@ func handleTopicChange(room *Room, conn *websocket.Conn, message Message, roomID
 func handleRoleSelection(room *Room, conn *websocket.Conn, message Message, roomID string) {
 	// Store the role in the client
 	room.Mutex.Lock()
-	defer room.Mutex.Unlock()
 	if client, exists := room.Clients[conn]; exists {
 		if client.IsSpectator {
+			room.Mutex.Unlock()
 			return
 		}
 		client.Role = message.Role
 	}
+	room.Mutex.Unlock()
 
 	// Broadcast role selection to other clients
 	for _, r := range snapshotRecipients(room, conn) {
@@ -686,11 +689,28 @@ func handleRoleSelection(room *Room, conn *websocket.Conn, message Message, room
 
 // handleReadyStatus handles ready status
 func handleReadyStatus(room *Room, conn *websocket.Conn, message Message, roomID string) {
+	if message.Ready == nil {
+		return
+	}
+
+	room.Mutex.Lock()
+	client, exists := room.Clients[conn]
+	if !exists || client.IsSpectator {
+		room.Mutex.Unlock()
+		return
+	}
+	client.Ready = *message.Ready
+	message.UserID = client.UserID
+	room.Mutex.Unlock()
+
 	// Broadcast ready status to other clients
 	for _, r := range snapshotRecipients(room, conn) {
 		if err := r.SafeWriteJSON(message); err != nil {
 		}
 	}
+
+	// Reconnecting clients recover readiness from the participant snapshot.
+	broadcastParticipants(room)
 }
 
 // handleMuteRequest handles mute requests
