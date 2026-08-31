@@ -316,6 +316,7 @@ const SavedTranscripts: React.FC<SavedTranscriptsProps> = ({ className }) => {
                         <Eye className='w-3 h-3 mr-1' />
                         View
                       </Button>
+                      {transcript.result !== 'pending' && (
                       <Button
                         variant='outline'
                         size='sm'
@@ -326,6 +327,7 @@ const SavedTranscripts: React.FC<SavedTranscriptsProps> = ({ className }) => {
                         <Download className='w-3 h-3 mr-1' />
                         {exportingId === transcript.id ? 'Exporting...' : 'PDF'}
                       </Button>
+                      )}
                       <Button
                         variant='outline'
                         size='sm'
@@ -480,6 +482,7 @@ const SavedTranscripts: React.FC<SavedTranscriptsProps> = ({ className }) => {
               <Separator />
 
               <div className='flex items-center justify-end gap-3'>
+                {selectedTranscript.result !== 'pending' && (
                 <Button
                   onClick={() => handleExportPDF(selectedTranscript.id)}
                   disabled={exportingId === selectedTranscript.id}
@@ -489,6 +492,7 @@ const SavedTranscripts: React.FC<SavedTranscriptsProps> = ({ className }) => {
                   <Download className='w-4 h-4' />
                   {exportingId === selectedTranscript.id ? 'Exporting...' : 'Download PDF'}
                 </Button>
+                )}
                 <Button
                   onClick={handleCreatePost}
                   disabled={creatingPost}

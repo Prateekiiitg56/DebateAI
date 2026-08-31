@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,11 +112,16 @@ func TestFormatPhaseName(t *testing.T) {
 }
 
 func TestSanitizeText(t *testing.T) {
-	input := "Hello\r\nWorld! Special chars: \u201cquotes\u201d & accents."
+	input := "Hello\r\nWorld! Smart quotes: \u201cquotes\u201d & accents."
 	sanitized := sanitizeText(input)
 
 	if bytes.Contains([]byte(sanitized), []byte("\r")) {
 		t.Errorf("sanitizeText did not remove carriage returns: %q", sanitized)
+	}
+
+	// Smart quotes (\u201c, \u201d) should be mapped to ASCII double quotes
+	if !strings.Contains(sanitized, "\"quotes\"") {
+		t.Errorf("sanitizeText did not map smart quotes to ASCII: %q", sanitized)
 	}
 }
 

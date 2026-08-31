@@ -260,6 +260,12 @@ func ExportTranscriptPDFHandler(c *gin.Context) {
 		return
 	}
 
+	// Reject pending transcripts — PDF export is only valid for completed debates
+	if transcript.Result == "pending" {
+		c.JSON(400, gin.H{"error": "Cannot export a transcript with a pending result. Please wait for the debate to be completed."})
+		return
+	}
+
 	// Generate PDF
 	pdfBytes, err := services.GenerateTranscriptPDF(transcript)
 	if err != nil {
@@ -272,6 +278,7 @@ func ExportTranscriptPDFHandler(c *gin.Context) {
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
 	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+	c.Header("Cache-Control", "no-store")
 	c.Data(200, "application/pdf", pdfBytes)
 }
 

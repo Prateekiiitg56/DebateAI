@@ -46,7 +46,7 @@ func GenerateTranscriptPDF(transcript *models.SavedDebateTranscript) ([]byte, er
 		return nil, fmt.Errorf("failed to generate PDF: %w", err)
 	}
 	if pdf.Err() {
-		return nil, fmt.Errorf("PDF generation error: %s", pdf.Error())
+		return nil, fmt.Errorf("PDF generation error: %v", pdf.Error())
 	}
 
 	return buf.Bytes(), nil
@@ -96,13 +96,13 @@ func renderMetadata(pdf *gofpdf.Fpdf, t *models.SavedDebateTranscript) {
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(20, 6, "Topic:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
-	topic := truncateText(t.Topic, 60)
+	topic := truncateText(sanitizeText(t.Topic), 60)
 	pdf.CellFormat(70, 6, topic, "", 0, "L", false, 0, "")
 
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(15, 6, "Type:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
-	debateType := formatDebateType(t.DebateType)
+	debateType := sanitizeText(formatDebateType(t.DebateType))
 	pdf.CellFormat(0, 6, debateType, "", 1, "L", false, 0, "")
 
 	// Row 2: Opponent and Result
@@ -110,13 +110,13 @@ func renderMetadata(pdf *gofpdf.Fpdf, t *models.SavedDebateTranscript) {
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(20, 6, "vs:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
-	opponent := truncateText(t.Opponent, 60)
+	opponent := truncateText(sanitizeText(t.Opponent), 60)
 	pdf.CellFormat(70, 6, opponent, "", 0, "L", false, 0, "")
 
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(15, 6, "Result:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
-	pdf.CellFormat(0, 6, strings.ToUpper(t.Result), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 6, sanitizeText(strings.ToUpper(t.Result)), "", 1, "L", false, 0, "")
 
 	// Row 3: Date
 	pdf.SetX(20)
@@ -178,13 +178,19 @@ func renderMessageBubble(pdf *gofpdf.Fpdf, msg models.Message) {
 		labelR, labelG, labelB = 71, 85, 105   // slate-600
 	}
 
-	x := pdf.GetX()
-	y := pdf.GetY()
+	_ = pdf.GetX()
 
-	// Check if we need a new page
-	if y > 260 {
+	// Pre-calculate text dimensions for page-break check
+	text := sanitizeText(msg.Text)
+	lineHt := 4.5
+	lines := pdf.SplitText(text, 170)
+	textHeight := float64(len(lines))*lineHt + 6
+	// Total height includes sender label (5mm) + text bubble + spacing
+	totalHeight := 5 + textHeight + 3
+
+	// Check if we need a new page (accounting for full content height)
+	if pdf.GetY()+totalHeight > 280 {
 		pdf.AddPage()
-		y = pdf.GetY()
 	}
 
 	// Sender label
@@ -196,15 +202,8 @@ func renderMessageBubble(pdf *gofpdf.Fpdf, msg models.Message) {
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.SetTextColor(51, 65, 85) // slate-700
 
-	// Calculate text height
-	text := sanitizeText(msg.Text)
-	lineHt := 4.5
-	lines := pdf.SplitText(text, 170)
-	textHeight := float64(len(lines)) * lineHt + 6
-
 	// Draw background rectangle
 	pdf.SetFillColor(bgR, bgG, bgB)
-	_ = x
 	pdf.Rect(15, pdf.GetY(), 180, textHeight, "F")
 
 	// Write the text inside the box
@@ -231,8 +230,11 @@ func renderPhaseTranscripts(pdf *gofpdf.Fpdf, transcripts map[string]string) {
 			continue
 		}
 
-		// Check page space
-		if pdf.GetY() > 250 {
+		// Pre-calculate text height to check page space properly
+		sanitized := sanitizeText(text)
+		preLines := pdf.SplitText(sanitized, 170)
+		preHeight := float64(len(preLines))*4.5 + 6 + 7 + 4 // text + padding + header + spacing
+		if pdf.GetY()+preHeight > 280 {
 			pdf.AddPage()
 		}
 
@@ -247,10 +249,9 @@ func renderPhaseTranscripts(pdf *gofpdf.Fpdf, transcripts map[string]string) {
 		pdf.SetFont("Helvetica", "", 9)
 		pdf.SetTextColor(51, 65, 85)
 
-		sanitized := sanitizeText(text)
 		lineHt := 4.5
 		lines := pdf.SplitText(sanitized, 170)
-		textHeight := float64(len(lines)) * lineHt + 6
+		textHeight := float64(len(lines))*lineHt + 6
 
 		pdf.Rect(15, pdf.GetY(), 180, textHeight, "F")
 		pdf.SetX(18)
@@ -297,24 +298,51 @@ func formatPhaseName(phase string) string {
 }
 
 func truncateText(text string, maxLen int) string {
-	if len(text) <= maxLen {
+	runes := []rune(text)
+	if len(runes) <= maxLen {
 		return text
 	}
-	return text[:maxLen-3] + "..."
+	if maxLen <= 3 {
+		return string(runes[:maxLen])
+	}
+	return string(runes[:maxLen-3]) + "..."
 }
 
 func sanitizeText(text string) string {
-	// Replace problematic characters for PDF rendering
+	// Normalize line endings
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
-	// gofpdf uses Windows-1252 encoding by default; strip non-ASCII chars
-	// that could cause rendering issues
+
+	// gofpdf uses Windows-1252 encoding by default.
+	// Map common Unicode characters to their Windows-1252 equivalents,
+	// and pass through ASCII + Latin-1 Supplement (U+00A0–U+00FF) directly.
+	unicodeToWin1252 := map[rune]string{
+		'\u2018': "'",  // left single quotation mark
+		'\u2019': "'",  // right single quotation mark
+		'\u201C': "\"", // left double quotation mark
+		'\u201D': "\"", // right double quotation mark
+		'\u2013': "-",  // en dash
+		'\u2014': "--", // em dash
+		'\u2026': "...", // ellipsis
+		'\u2022': "*",  // bullet
+		'\u00A0': " ",  // non-breaking space
+	}
+
 	var b strings.Builder
+	b.Grow(len(text))
 	for _, r := range text {
-		if r < 128 || (r >= 160 && r <= 255) {
+		if r < 128 {
+			// Standard ASCII - always safe
 			b.WriteRune(r)
+		} else if r >= 160 && r <= 255 {
+			// Latin-1 Supplement - directly supported by Windows-1252
+			b.WriteRune(r)
+		} else if replacement, ok := unicodeToWin1252[r]; ok {
+			// Known Unicode → Windows-1252 equivalent
+			b.WriteString(replacement)
 		} else {
-			b.WriteRune('?')
+			// Unsupported character - use closest safe representation
+			b.WriteRune(' ')
 		}
 	}
 	return b.String()

@@ -250,7 +250,8 @@ export const transcriptService = {
     a.download = `debate-transcript-${id}.pdf`;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+    // Delay URL revocation to prevent download cancellation in some browsers
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
   },
 };
